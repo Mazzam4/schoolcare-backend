@@ -3,7 +3,6 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
-const cron = require('node-cron');
 require('dotenv').config();
 
 const app = express();
@@ -552,36 +551,45 @@ app.put('/api/org/members/:id/role', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// ROBOT CRON JOB: PENGHAPUS LAPORAN KADALUARSA
+// API CRON JOB VERCEL: PENGHAPUS LAPORAN KADALUARSA
 // ==========================================
-// Menjalankan tugas setiap jam 00:00 (Tengah Malam) setiap harinya.
-// Format cron: "Menit Jam Tanggal Bulan Hari" -> "0 0 * * *"
-cron.schedule('0 0 * * *', async () => {
-  console.log('[CRON] Memulai pengecekan laporan kadaluarsa...');
+// Endpoint ini akan "diklik" otomatis oleh Vercel setiap tengah malam
+app.get('/api/cron/cleanup', async (req, res) => {
+  console.log('[CRON] Memulai pembersihan database...');
   try {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Hapus semua laporan yang tanggal dibuatnya (createdAt) KURANG DARI (lt) 7 hari yang lalu
+    // Hapus laporan yang usianya lebih dari 7 hari
     const deletedReports = await prisma.report.deleteMany({
       where: {
         createdAt: {
-          lt: sevenDaysAgo // lt = Less Than
+          lt: sevenDaysAgo
         }
       }
     });
 
-    console.log(`[CRON] Berhasil membersihkan ${deletedReports.count} laporan lama dari database.`);
+    console.log(`[CRON] Selesai! Menghapus ${deletedReports.count} laporan.`);
+    res.status(200).json({ 
+      success: true, 
+      message: `Berhasil membersihkan ${deletedReports.count} laporan kadaluarsa.` 
+    });
   } catch (error) {
-    console.error('[CRON] Gagal menghapus laporan:', error);
+    console.error('[CRON] Gagal:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // ==========================================
-// Menyalakan Server
+// Menyalakan Server (VERSI VERCEL)
 // ==========================================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server SchoolCare berjalan di http://localhost:${PORT}`);
-  console.log('Robot pembersih otomatis (Cron Job) sudah aktif!');
-});
+// Jika dijalankan di komputer lokal (laptopmu), dia akan pakai app.listen
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server SchoolCare berjalan di http://localhost:${PORT}`);
+  });
+}
+
+// WAJIB TAMBAHKAN INI UNTUK VERCEL:
+module.exports = app;

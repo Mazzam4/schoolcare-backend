@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SchoolCare Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Icons (SVG placeholders used directly below for better performance, but including this just in case) -->
+</head>
+<body>
+
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <img src="assets/LOGO.svg" alt="SchoolCare Logo" style="width: 90px; height: auto; margin: 0 auto var(--sp-lg); display: block;">
+            <h1>Admin Panel</h1>
+            <p>Masukkan Secret Key untuk mengakses data sistem.</p>
+            
+            <form id="login-form">
+                <input type="password" id="admin-key" class="login-input" placeholder="Admin Secret Key" required>
+                <div id="login-error" class="login-error">Key tidak valid atau server error.</div>
+                <button type="submit" class="btn-primary" id="login-btn">
+                    Masuk ke Sistem
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== APP LAYOUT ==================== -->
+    <div id="app" class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <img src="assets/LOGO.svg" alt="SchoolCare Logo" style="width: 36px; height: auto; flex-shrink: 0;">
+                    <div>
+                        <div class="sidebar-brand-text">SchoolCare</div>
+                        <div class="sidebar-brand-sub">Admin Panel</div>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="sidebar-nav">
+                <li>
+                    <a href="#overview" class="sidebar-link active" data-page="overview">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        Overview
+                    </a>
+                </li>
+                <li>
+                    <a href="#users" class="sidebar-link" data-page="users">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Users
+                    </a>
+                </li>
+                <li>
+                    <a href="#organizations" class="sidebar-link" data-page="organizations">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        Organizations
+                    </a>
+                </li>
+                <li>
+                    <a href="#reports" class="sidebar-link" data-page="reports">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        All Reports
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="sidebar-logout">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Keluar Sistem
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="hamburger" id="sidebar-toggle">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <h2 class="topbar-title" id="topbar-title">Overview</h2>
+                </div>
+                <div class="topbar-right">
+                    <div class="avatar">AD</div>
+                </div>
+            </header>
+
+            <div class="content">
+                <!-- Loader -->
+                <div id="page-loader" class="page-loading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                </div>
+
+                <!-- PAGE: OVERVIEW -->
+                <div id="page-overview" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-label">Total Users</div>
+                            <div class="stat-card-value" id="stat-users">-</div>
+                            <div class="stat-card-sub">Di seluruh sistem</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Organisasi Aktif</div>
+                            <div class="stat-card-value" id="stat-orgs">-</div>
+                            <div class="stat-card-sub">Sekolah terdaftar</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Total Laporan</div>
+                            <div class="stat-card-value" id="stat-reports">-</div>
+                            <div class="stat-card-sub">7 hari terakhir</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-label">Laporan Hari Ini</div>
+                            <div class="stat-card-value" id="stat-today">-</div>
+                            <div class="stat-card-sub">Perlu tindak lanjut</div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3>Laporan per Hari (Semua Sekolah)</h3>
+                            <div class="chart-container">
+                                <canvas id="mainChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Distribusi Status</h3>
+                            <div class="chart-container">
+                                <canvas id="pieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAGE: USERS -->
+                <div id="page-users" class="page">
+                    <div id="users-org-selector" class="org-selector-section">
+                        <div class="section-header">
+                            <h3 class="t-tagline">Pilih Sekolah</h3>
+                            <p class="t-caption t-muted">Pilih sekolah di bawah untuk mengelola data anggota/user.</p>
+                        </div>
+                        <div id="users-org-grid" class="org-grid">
+                            <!-- Grid populated by JS -->
+                        </div>
+                    </div>
+
+                    <div id="users-content" style="display: none;">
+                        <div style="margin-bottom: var(--sp-lg); display: flex; align-items: center; gap: var(--sp-sm);">
+                            <button id="btn-back-org-users" class="btn-ghost btn-sm">
+                                &larr; Ganti Sekolah
+                            </button>
+                            <span class="t-body-strong" id="current-org-name-users"></span>
+                        </div>
+                        
+                        <div class="table-toolbar">
+                            <input type="text" id="search-users" class="table-search" placeholder="Cari nama, email, role...">
+                            <div class="table-filters" id="filter-users-role">
+                                <button class="filter-chip active" data-val="all">Semua <span class="count"></span></button>
+                                <button class="filter-chip" data-val="guru">Guru <span class="count"></span></button>
+                                <button class="filter-chip" data-val="siswa">Siswa <span class="count"></span></button>
+                            </div>
+                        </div>
+
+                        <div class="table-card">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nama</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Organisasi (ID)</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-users">
+                                    <!-- Data will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAGE: ORGANIZATIONS -->
+                <div id="page-organizations" class="page">
+                    <div class="table-toolbar">
+                        <input type="text" id="search-orgs" class="table-search" placeholder="Cari nama sekolah...">
+                        <div class="org-report-select">
+                            <label for="orgs-report-selector" class="form-label">Pilih Sekolah</label>
+                            <select id="orgs-report-selector" class="form-select">
+                                <option value="">Semua Sekolah</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="orgs-report-data" style="display: none;">
+                        <div class="stats-grid" style="margin-bottom: var(--sp-lg);">
+                            <div class="stat-card">
+                                <div class="stat-card-label">Total Laporan</div>
+                                <div class="stat-card-value" id="org-report-total">-</div>
+                                <div class="stat-card-sub">Untuk sekolah terpilih</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-label">Dilaporkan</div>
+                                <div class="stat-card-value" id="org-report-dilaporkan">-</div>
+                                <div class="stat-card-sub">Status Dilaporkan</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-label">Proses</div>
+                                <div class="stat-card-value" id="org-report-proses">-</div>
+                                <div class="stat-card-sub">Status Proses</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-label">Selesai</div>
+                                <div class="stat-card-value" id="org-report-selesai">-</div>
+                                <div class="stat-card-sub">Status Selesai</div>
+                            </div>
+                        </div>
+                        <div class="charts-grid">
+                            <div class="chart-card">
+                                <h3>Laporan per Hari</h3>
+                                <div class="chart-container">
+                                    <canvas id="orgMainChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-card">
+                                <h3>Distribusi Status</h3>
+                                <div class="chart-container">
+                                    <canvas id="orgPieChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nama Sekolah</th>
+                                    <th>Deskripsi</th>
+                                    <th>Total Member</th>
+                                    <th>Total Laporan</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-orgs">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PAGE: REPORTS -->
+                <div id="page-reports" class="page">
+                    <div id="reports-org-selector" class="org-selector-section">
+                        <div class="section-header">
+                            <h3 class="t-tagline">Pilih Sekolah</h3>
+                            <p class="t-caption t-muted">Pilih sekolah di bawah untuk mengelola laporan fasilitas & kebersihan.</p>
+                        </div>
+                        <div id="reports-org-grid" class="org-grid">
+                            <!-- Grid populated by JS -->
+                        </div>
+                    </div>
+
+                    <div id="reports-content" style="display: none;">
+                        <div style="margin-bottom: var(--sp-lg); display: flex; align-items: center; gap: var(--sp-sm);">
+                            <button id="btn-back-org-reports" class="btn-ghost btn-sm">
+                                &larr; Ganti Sekolah
+                            </button>
+                            <span class="t-body-strong" id="current-org-name-reports"></span>
+                        </div>
+                        
+                        <div class="table-toolbar">
+                            <input type="text" id="search-reports" class="table-search" placeholder="Cari deskripsi, lokasi...">
+                            <div class="table-filters" id="filter-reports-status">
+                                <button class="filter-chip active" data-val="all">Semua <span class="count"></span></button>
+                                <button class="filter-chip" data-val="Dilaporkan">Dilaporkan <span class="count"></span></button>
+                                <button class="filter-chip" data-val="Proses">Proses <span class="count"></span></button>
+                                <button class="filter-chip" data-val="Selesai">Selesai <span class="count"></span></button>
+                            </div>
+                        </div>
+
+                        <div class="table-card">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px; text-align: center;"></th>
+                                        <th>ID</th>
+                                        <th>Tanggal</th>
+                                        <th>Kategori</th>
+                                        <th>Lokasi</th>
+                                        <th>Sekolah (ID)</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-reports">
+                                    <!-- Data will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+    
+    <!-- Modal: Edit User -->
+    <div id="modal-user" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Edit User</h2>
+                <button class="modal-close" data-close="modal-user">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-user-id">
+                <div class="form-group">
+                    <label class="form-label">Nama Depan</label>
+                    <input type="text" id="edit-user-fname" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nama Belakang</label>
+                    <input type="text" id="edit-user-lname" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select id="edit-user-role" class="form-select">
+                        <option value="siswa">Siswa</option>
+                        <option value="guru">Guru</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Organisasi ID (Opsional)</label>
+                    <input type="number" id="edit-user-org" class="form-input" placeholder="ID Sekolah">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-close="modal-user">Batal</button>
+                <button class="btn-primary" id="btn-save-user" style="width: auto;">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

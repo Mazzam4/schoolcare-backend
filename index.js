@@ -18,6 +18,9 @@ app.use(express.json({ limit: '4mb' }));
 
 // Also increase the limit for URL-encoded data if needed
 app.use(express.urlencoded({ limit: '4mb', extended: true }));
+
+// Serve Admin Panel frontend
+app.use('/admin', express.static('tampilanBackend'));
 // ==========================================
 // 1. API REGISTER (Membuat Akun Baru)
 // ==========================================
@@ -577,6 +580,163 @@ app.get('/api/cron/cleanup', async (req, res) => {
   } catch (error) {
     console.error('[CRON] Gagal:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==========================================
+// ADMIN ENDPOINTS (SUPER ADMIN)
+// ==========================================
+// Middleware for Admin
+const authenticateAdmin = (req, res, next) => {
+  const key = req.headers['x-admin-key'];
+  if (!key || key !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ message: 'Unauthorized. Invalid Admin Key.' });
+  }
+  next();
+};
+
+// 1. GET Admin Stats
+app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
+  try {
+    const totalUsers = await prisma.user.count();
+    const totalOrgs = await prisma.organization.count();
+    const totalReports = await prisma.report.count();
+    
+    // Reports today
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const reportsToday = await prisma.report.count({
+      where: { createdAt: { gte: startOfToday } }
+    });
+
+    // Reports per day (last 7 days)
+    const sevenDaysAgo = new Date(startOfToday);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    
+    const recentReports = await prisma.report.findMany({
+      where: { createdAt: { gte: sevenDaysAgo } }
+    });
+    
+    const reportsByDate = {};
+    for (let i = 6; i >= 0; i--) {
+      let d = new Date(startOfToday);
+      d.setDate(d.getDate() - i);
+      reportsByDate[d.toISOString().split('T')[0]] = 0;
+    }
+    
+    let statusBreakdown = { Dilaporkan: 0, Proses: 0, Selesai: 0 };
+    recentReports.forEach(r => {
+      const dateStr = r.createdAt.toISOString().split('T')[0];
+      if (reportsByDate[dateStr] !== undefined) reportsByDate[dateStr]++;
+      
+      const s = r.status;
+      if (s === 'Dilaporkan') statusBreakdown.Dilaporkan++;
+      else if (s.toLowerCase().includes('proses')) statusBreakdown.Proses++;
+      else if (s === 'Selesai') statusBreakdown.Selesai++;
+    });
+
+    res.status(200).json({ totalUsers, totalOrgs, totalReports, reportsToday, reportsByDate, statusBreakdown });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 2. GET All Users
+app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      include: { organization: { select: { name: true } } },
+      orderBy: { id: 'desc' }
+    });
+    res.status(200).json({ users });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 3. GET All Organizations
+app.get('/api/admin/organizations', authenticateAdmin, async (req, res) => {
+  try {
+    const organizations = await prisma.organization.findMany({
+      include: {
+        _count: { select: { users: true, reports: true } }
+      },
+      orderBy: { id: 'desc' }
+    });
+    res.status(200).json({ organizations });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 4. GET All Reports
+app.get('/api/admin/reports', authenticateAdmin, async (req, res) => {
+  try {
+    const reports = await prisma.report.findMany({
+      include: { author: { select: { firstName: true, lastName: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.status(200).json({ reports });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 5. UPDATE User
+app.put('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
+  const { firstName, lastName, role, organizationId } = req.body;
+  try {
+    const user = await prisma.user.update({
+      where: { id: parseInt(req.params.id) },
+      data: { firstName, lastName, role, organizationId }
+    });
+    res.status(200).json({ message: 'User updated', user });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 6. DELETE User
+app.delete('/api/admin/users/:id', authenticateAdmin, async (req, res) => {
+  try {
+    await prisma.user.delete({ where: { id: parseInt(req.params.id) } });
+    res.status(200).json({ message: 'User deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 7. DELETE Organization
+app.delete('/api/admin/organizations/:id', authenticateAdmin, async (req, res) => {
+  try {
+    await prisma.organization.delete({ where: { id: parseInt(req.params.id) } });
+    res.status(200).json({ message: 'Organization deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 8. UPDATE Report Status
+app.put('/api/admin/reports/:id', authenticateAdmin, async (req, res) => {
+  const { status } = req.body;
+  try {
+    const report = await prisma.report.update({
+      where: { id: parseInt(req.params.id) },
+      data: { status }
+    });
+    res.status(200).json({ message: 'Report updated', report });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 9. DELETE Report
+app.delete('/api/admin/reports/:id', authenticateAdmin, async (req, res) => {
+  try {
+    await prisma.report.delete({ where: { id: parseInt(req.params.id) } });
+    res.status(200).json({ message: 'Report deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

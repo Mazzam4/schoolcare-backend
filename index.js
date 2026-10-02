@@ -91,7 +91,8 @@ app.post('/api/auth/login', async (req, res) => {
         lastName: user.lastName,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId
+        organizationId: user.organizationId,
+        profileImage: user.profileImage
       }
     });
 
@@ -226,6 +227,28 @@ app.put('/api/user/update', authenticateToken, async (req, res) => {
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
       }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Terjadi kesalahan server.', error: error.message });
+  }
+});
+
+// ==========================================
+// 5b. API GET PROFIL USER (untuk load foto profil dari server)
+// ==========================================
+app.get('/api/user/profile', authenticateToken, async (req, res) => {
+  const userId = req.user.userId;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ message: 'User tidak ditemukan!' });
+
+    res.status(200).json({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      profileImage: user.profileImage
     });
   } catch (error) {
     res.status(500).json({ message: 'Terjadi kesalahan server.', error: error.message });
